@@ -1,22 +1,13 @@
 services:
-  mtproxy:
-    image: nineseconds/mtg:2
-    container_name: mtproto-proxy
+  telemt:
+    image: whn0thacked/telemt-docker:latest
+    container_name: telemt-proxy
     restart: unless-stopped
     ports:
       - "${PORT:-443}:${PORT:-443}"
-    command:
-      - simple-run
-      - -n
-      - 1.1.1.1
-      - -i
-      - prefer-ipv4
-      - 0.0.0.0:${PORT:-443}
-      - ${SECRET}
-
-  secretgen:
-    image: nineseconds/mtg:2
-    command:
-      - generate-secret
-      - --hex
-      - ${FAKE_TLS_DOMAIN:-1c.ru}
+    environment:
+      PROXY_PROTOCOL: abracadabra
+      PROXY_SECRET: ${SECRET}
+      PROXY_TLS_DOMAIN: ${FAKE_TLS_DOMAIN}
+      BIND_ADDR: 0.0.0.0:${PORT:-443}
+      UPSTREAMS: ${UPSTREAMS}
