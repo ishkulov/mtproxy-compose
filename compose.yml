@@ -1,13 +1,20 @@
 services:
   telemt:
     image: whn0thacked/telemt-docker:latest
-    container_name: telemt-proxy
+    container_name: telemt
     restart: unless-stopped
-    ports:
-      - "${PORT:-443}:${PORT:-443}"
     environment:
-      PROXY_PROTOCOL: abracadabra
-      PROXY_SECRET: ${SECRET}
-      PROXY_TLS_DOMAIN: ${FAKE_TLS_DOMAIN}
-      BIND_ADDR: 0.0.0.0:${PORT:-443}
-      UPSTREAMS: ${UPSTREAMS}
+      RUST_LOG: "${RUST_LOG:-info}"
+    volumes:
+      - ./telemt.toml:/etc/telemt.toml:ro
+    ports:
+      - "443:443/tcp"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,size=16m

@@ -1,36 +1,38 @@
-# Telegram MTProxy via `telemt-docker` + SOCKS5
+# Telegram MTProxy via `telemt-docker` (upstream-aligned)
 
 ## Files
-- `compose.yml` - single `telemt` service.
-- `.env.example` - runtime variables template.
-- Image: `whn0thacked/telemt-docker:latest` (as in upstream README).
+- `compose.yml` - `telemt` service in the same style as upstream README.
+- `telemt.toml` - main Telemt config mounted to `/etc/telemt.toml`.
+- `.env.example` - optional runtime variables (`RUST_LOG`).
 
 ## Init and run
 1. Create local env file:
    ```bash
    cp .env.example .env
    ```
-2. Edit `.env` and set values:
-   - `SECRET` - 32-byte hex value without `ee` prefix.
-   - `UPSTREAMS` - one or more upstreams, comma-separated.
-3. Start proxy:
+2. Generate secret (32 hex chars):
+   ```bash
+   openssl rand -hex 16
+   ```
+3. Edit `telemt.toml`:
+   - set `[censorship].tls_domain`
+   - paste generated secret into `[access.users].docker`
+   - set SOCKS5 upstream in `[[upstreams]]` (`address`, `username`, `password`)
+4. Start:
    ```bash
    docker compose up -d
    ```
-4. Watch logs:
+5. Logs:
    ```bash
    docker compose logs -f telemt
    ```
 
-## `UPSTREAMS` format
-- Single SOCKS5 upstream:
-  ```text
-  socks5://user:pass@host:port
-  ```
-- Multiple upstreams:
-  ```text
-  socks5://user:pass@host1:1080,socks5://user:pass@host2:1080
-  ```
+## Secret placement
+Put your generated value here:
+```toml
+[access.users]
+docker = "0123456789abcdef0123456789abcdef"
+```
 
 ## Validation and troubleshooting
 ```bash
@@ -39,18 +41,27 @@ docker compose ps
 docker compose logs --tail=100 telemt
 ```
 
-## Telegram client URL
-Use the proxy URL/secret emitted by `telemt` logs as the primary source.
-
-Template (if constructing manually):
-```text
-tg://proxy?server=<IP>&port=${PORT}&secret=ee${SECRET}${HEX_DOMAIN}
+## SOCKS5 in `telemt.toml`
+Without auth:
+```toml
+[[upstreams]]
+type = "socks5"
+address = "1.2.3.4:1234"
+enabled = true
+weight = 1
 ```
 
-Example:
-```bash
-IP="$(curl -s ifconfig.me)"
-source .env
-HEX_DOMAIN="$(printf '%s' "${FAKE_TLS_DOMAIN}" | xxd -p -c 256)"
-echo "tg://proxy?server=${IP}&port=${PORT}&secret=ee${SECRET}${HEX_DOMAIN}"
+With auth:
+```toml
+[[upstreams]]
+type = "socks5"
+address = "1.2.3.4:1234"
+username = "user"
+password = "pass"
+enabled = true
+weight = 1
 ```
+
+## Notes
+- Image: `whn0thacked/telemt-docker:latest` (as in upstream README).
+- Container starts as `telemt /etc/telemt.toml`; config file is mandatory.
